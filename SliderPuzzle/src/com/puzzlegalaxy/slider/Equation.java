@@ -54,8 +54,9 @@ public class Equation {
 	
 	public boolean isValid() {
 		try {
-			this.getRawResult();
+			Main.debug("RESULT: " + this.getRawResult());
 		} catch (InvalidExpressionException e) {
+			e.printStackTrace();
 			return false;
 		}
 		return true;
@@ -130,8 +131,9 @@ public class Equation {
 	
 	public void tokenize() throws InvalidExpressionException {
 		StringBuilder current = new StringBuilder();
-		for (int i = 0; i < this.expression.length(); i++) {
-			char ch = this.expression.charAt(i);
+		String value = this.expression.replace("x", "" + this.num);
+		for (int i = 0; i < value.length(); i++) {
+			char ch = value.charAt(i);
 			switch (ch) {
 			case ' ':
 				if (!current.toString().isEmpty()) {
