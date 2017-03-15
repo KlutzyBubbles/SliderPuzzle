@@ -1,4 +1,4 @@
-package com.puzzlegalaxy.slider;
+package com.puzzlegalaxy.slider.levels;
 
 public enum LevelType {
 

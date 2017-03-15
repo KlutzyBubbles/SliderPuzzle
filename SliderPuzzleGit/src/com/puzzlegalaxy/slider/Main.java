@@ -3,10 +3,13 @@ package com.puzzlegalaxy.slider;
 import java.util.UUID;
 
 import com.puzzlegalaxy.slider.exceptions.InvalidExpressionException;
+import com.puzzlegalaxy.slider.levels.LevelManager;
+import com.puzzlegalaxy.slider.utils.Equation;
 
 public class Main {
 
 	public static boolean debug = true;
+	public static boolean debugLoop = true;
 	public static LevelManager lm;
 
 	public static void main(String[] args) {
@@ -31,6 +34,12 @@ public class Main {
 
 	public static void debug(String msg) {
 		if (debug) {
+			System.out.println(msg);
+		}
+	}
+	
+	public static void debugLoop(String msg) {
+		if (debugLoop) {
 			System.out.println(msg);
 		}
 	}

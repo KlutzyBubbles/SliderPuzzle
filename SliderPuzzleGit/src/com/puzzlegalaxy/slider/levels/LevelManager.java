@@ -1,4 +1,4 @@
-package com.puzzlegalaxy.slider;
+package com.puzzlegalaxy.slider.levels;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -9,17 +9,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.puzzlegalaxy.slider.Main;
 import com.puzzlegalaxy.slider.exceptions.InvalidExpressionException;
 import com.puzzlegalaxy.slider.exceptions.InvalidLevelException;
+import com.puzzlegalaxy.slider.utils.ArrayUtils;
+import com.puzzlegalaxy.slider.utils.Equation;
 
 public class LevelManager {
 
+	/**
+	 * canBeNull: No, A null list will result in errors
+	 * Restrictions:
+	 * 	- List cannot contian any null values or invalid levels
+	 * Note:
+	 * 
+	 * The List containing all loaded levels for use
+	 * The Level objects should never be directly edited without validation
+	 */
 	private List<Level> levels = new ArrayList<Level>();
 
+	/**
+	 * Main constructor used for loading a Level Manager that may have previously been in use
+	 * 
+	 * @param levels	The list of levels currently loaded
+	 */
 	public LevelManager(List<Level> levels) {
 		this.levels = levels;
 	}
 
+	/**
+	 * Default constructor which generates a new list with no levels
+	 */
 	public LevelManager() {
 		this(new ArrayList<Level>());
 	}
@@ -117,9 +137,14 @@ public class LevelManager {
 			Main.debug("levelExists(UUID): Null levels existed (refer to above)");
 		int count = 0;
 		for (Level l : this.levels) {
-			if (l.getID() == id) {
-				Main.debug("levelExists(UUID): Level exists at index: " + count);
-				return true;
+			try {
+				if (l.getID() == id) {
+					Main.debug("levelExists(UUID): Level exists at index: " + count);
+					return true;
+				}
+			} catch (InvalidLevelException e) {
+				Main.debug("levelExists(UUID): Null level Id'd exist, skipping...");
+				continue;
 			}
 			count++;
 		}
@@ -136,21 +161,27 @@ public class LevelManager {
 	 */
 	public Level getLevel(UUID id) {
 		if (!this.levelExists(id)) {
-			Main.debug("getLevel(int): Level doesnt exist");
+			Main.debug("getLevel(UUID): Level doesnt exist");
 			return null;
 		}
 		boolean nullVals = this.removeNull();
 		if (nullVals)
-			Main.debug("getLevel(int): Null levels existed (refer to above)");
+			Main.debug("getLevel(UUID): Null levels existed (refer to above)");
 		int count = 0;
 		for (Level l : this.levels) {
-			if (l.getID() == id) {
-				Main.debug("getLevel(int): Level exists at index: " + count);
-				return l;
+			try {
+				if (l.getID() == id) {
+					Main.debug("getLevel(UUID): Level exists at index: " + count);
+					return l;
+				}
+			} catch (InvalidLevelException e) {
+				e.printStackTrace();
+				Main.debug("getLevel(UUID): WARNING - There is a level with no ID (see above)");
+				return null;
 			}
 			count++;
 		}
-		Main.debug("getLevel(int): WARNING - This message means there has been a logic error");
+		Main.debug("getLevel(UUID): WARNING - This message means there has been a logic error");
 		return null;
 	}
 
@@ -199,55 +230,13 @@ public class LevelManager {
 		return val;
 	}
 
-	public int[] intArrFromString(String s) throws InvalidLevelException {
-		s = s.replace(" ", "");
-		Main.debug(s);
-		if (s.equals("[]")) {
-			return new int[10];
-		}
-		if (!s.contains("]") || !s.contains("[") || !s.contains(",")) {
-			throw new InvalidLevelException("The specified string is not an int[] (Code: 2)");
-		}
-		String[] split = s.replace("[", "").replace("]", "").split(",");
-		int[] val = new int[split.length];
-		for (int i = 0; i < split.length; i++) {
-			try {
-				val[i] = Integer.parseInt(split[i]);
-			} catch (NumberFormatException e) {
-				throw new InvalidLevelException("There is an unknown variable in the int[] (Code: 3)");
-			}
-		}
-		return val;
-	}
-
-	public Object[][] objArrFromString(String s) throws InvalidLevelException {
-		if (!s.contains("}") || !s.contains("{") || !s.contains("]") || !s.contains("[") || !s.contains(",")) {
-			throw new InvalidLevelException("The specified string is not an valid matrix (Code: 8)");
-		}
-		String[] splitY = s.replace("{", "").replace("}", "").replace("]", "").split("\\[");
-		Object[][] val = new Object[splitY.length][splitY[0].split(",").length];
-		for (int i = 0; i < splitY.length; i++) {
-			String[] splitX = splitY[i].split(",");
-			if (splitX.length >= val.length) {
-				for (int ii = 0; ii < splitX.length; ii++) {
-					Main.debug("[" + ii + "," + i + "]");
-					if (i == 0 && ii == 0) {
-						val[ii][i] = splitX[ii];
-						continue;
-					}
-					Main.debug("NUM: " + splitX[ii]);
-					try {
-						Integer.parseInt(splitX[ii]);
-					} catch (NumberFormatException e) {
-						throw new InvalidLevelException("Only value [0,0] of the matrix can be an Object (Code: 9)");
-					}
-					val[ii][i] = splitX[ii];
-				}
-			}
-		}
-		return val;
-	}
-
+	/**
+	 * Validates a split level String to make sure it can be parsed as a valid Level object
+	 * 
+	 * @param level						The String[] split that will be  validated
+	 * @return							Whether or not the split level string is a valid level
+	 * @throws InvalidLevelException	Thrown if the split level string has errors
+	 */
 	public boolean validateLevel(String[] level) throws InvalidLevelException {
 		if (level == null)
 			return false;
@@ -275,7 +264,7 @@ public class LevelManager {
 		} catch (NumberFormatException e) {
 			throw new InvalidLevelException("The specified level doesnt have steps (Code: 5)");
 		}
-		this.intArrFromString(param[5]);
+		ArrayUtils.intArrFromString(param[5]);
 		if (level[1] == null) {
 			throw new InvalidLevelException("The custom level matrix is null (Code: 6)");
 		}
@@ -283,7 +272,7 @@ public class LevelManager {
 			throw new InvalidLevelException("The custom level matrix is empty (Code: 7)");
 		}
 		if (l == LevelType.SAVED) {
-			this.objArrFromString(level[1]);
+			ArrayUtils.objArrFromString(level[1]);
 		} else {
 			String exp = level[1].replace("\\{", "").replace("\\}", "").replace("]", "").replace("[", "");
 			Main.debug("validateLevel(String[]): EXP: " + exp);
@@ -300,6 +289,14 @@ public class LevelManager {
 		return true;
 	}
 
+	/**
+	 * Adds a level to the global level list after being validated
+	 * 
+	 * @param level						The split level string that will be loaded as a Level object
+	 * @param uuid						The UUID that will be assigned to the level
+	 * @return							The Level object that has been added or null if it did not succeed
+	 * @throws InvalidLevelException	Thrown if the level validation failed
+	 */
 	public Level addLevel(String[] level, UUID uuid) throws InvalidLevelException {
 		if (!this.validateLevel(level)) {
 			throw new InvalidLevelException("The string validation failed (Code: Unknown)");
@@ -310,10 +307,10 @@ public class LevelManager {
 		String levelName = param[1];
 		boolean solved = Boolean.getBoolean(param[2]);
 		LevelType l = LevelType.valueOf(param[3]);
-		int[] gSec = this.intArrFromString(param[5]);
+		int[][] gSec = ArrayUtils.intArrFromString(param[5]);
 		Level value;
 		if (l == LevelType.SAVED) {
-			value = new Level(l, this.objArrFromString(level[1]), gSec, levelNum, steps, levelName, "", solved, uuid);
+			value = new Level(l, ArrayUtils.objArrFromString(level[1]), gSec, levelNum, steps, levelName, "", solved, uuid);
 		} else {
 			value = new Level(l, gSec, levelNum, steps, levelName, level[1], uuid);
 		}
@@ -321,40 +318,95 @@ public class LevelManager {
 		return value;
 	}
 
+	/**
+	 * Adds a random level with a custom Level Name and Number
+	 * 
+	 * @param levelNum		The number of the level
+	 * @param levelName		The name of the level
+	 * @return				The level object that has been added or null if the creation failed
+	 */
 	public Level addLevel(int levelNum, String levelName) {
 		Level value = new Level(LevelType.RANDOM, levelNum, 10, levelName, "");
 		this.levels.add(value);
 		return value;
 	}
 
+	/**
+	 * Adds a random level with a default name of "Level %n" where '%n' is the Level Number
+	 * 
+	 * @param levelNum		The number of the level
+	 * @return				The level object that has been added or null if the creation failed
+	 */
 	public Level addLevel(int levelNum) {
 		return this.addLevel(levelNum, "Level %n");
 	}
 
+	/**
+	 * Adds a default level with a custom Level Name and Number
+	 * 
+	 * @param levelNum		The number of the level
+	 * @param levelName		The name of the level
+	 * @return				The level object that has been added or null if the creation failed
+	 */
 	public Level addDefaultLevel(int levelNum, String levelName) {
 		Level value = new Level(LevelType.DEFAULT, levelNum, 10, levelName, "");
 		this.levels.add(value);
 		return value;
 	}
 
+	/**
+	 * Adds a default level with a default name of "Level %n" where '%n' is the Level Number
+	 * 
+	 * @param levelNum		The number of the level
+	 * @return				The level object that has been added or null if the creation failed
+	 */
 	public Level addDefaultLevel(int levelNum) {
 		return this.addDefaultLevel(levelNum, "Level %n");
 	}
 
+	/**
+	 * Gets the total amount of levels loaded in the global level list
+	 * 
+	 * @return	The amount of levels currently loaded
+	 */
 	public int getLevelCount() {
 		return this.levels.size();
 	}
 
+	/**
+	 * Prints Information about all of the levels available
+	 */
 	public void printLevels() {
 		if (this.levels == null)
 			return;
 		if (this.levels.isEmpty())
 			return;
 		for (Level l : this.levels) {
-			System.out.println(l.getID().toString() + "," + l.getLevelNum() + "," + l.getLevelType().toString() + "," + l.getLevelName());
+			try {
+				System.out.println(l.getID().toString() + "," + l.getLevelNum() + "," + l.getLevelType().toString() + "," + l.getLevelName());
+			} catch (InvalidLevelException e) {
+				System.out.println("Level: " + l.getLevelName() + " - Has no ID, skipping...");
+				continue;
+			}
+		}
+	}
+	
+	/**
+	 * Prints all information in raw format about all of the levels available
+	 */
+	public void printRawLevels() {
+		if (this.levels == null)
+			return;
+		if (this.levels.isEmpty())
+			return;
+		for (Level l : this.levels) {
+			System.out.println(l.toString());
 		}
 	}
 
+	/**
+	 * Loads all the level files in the 'levels' folder into memory, any invalid levels will be ignored
+	 */
 	public void loadLevels() {
 		File folder = new File("src/levels/");
 		File[] files = folder.listFiles();

@@ -1,8 +1,9 @@
-package com.puzzlegalaxy.slider;
+package com.puzzlegalaxy.slider.utils;
 
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
+import com.puzzlegalaxy.slider.Main;
 import com.puzzlegalaxy.slider.exceptions.InvalidExpressionException;
 
 public class Equation {

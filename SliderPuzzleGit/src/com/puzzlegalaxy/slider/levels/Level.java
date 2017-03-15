@@ -1,12 +1,14 @@
-package com.puzzlegalaxy.slider;
+package com.puzzlegalaxy.slider.levels;
 
 import java.util.Random;
 import java.util.UUID;
 
 import com.puzzlegalaxy.slider.exceptions.InvalidExpressionException;
 import com.puzzlegalaxy.slider.exceptions.InvalidLevelException;
+import com.puzzlegalaxy.slider.utils.ArrayUtils;
+import com.puzzlegalaxy.slider.utils.Equation;
 
-public class Level {
+public class Level implements Cloneable {
 
 	/**
 	 * canBeNull: No, null values will default to LevelType.DEFAULT
@@ -205,13 +207,31 @@ public class Level {
 	}
 
 	/**
-	 * Gets the Object[][] of saaved info that is available in the level, this can also be null.
+	 * Gets the Object[][] of saved info that is available in the level, this can also be null.
 	 * This value should be ignored unless the levelType is LevelType.SAVED
 	 * 
 	 * @return	The Object[][] AKA savedInfo or null
 	 */
 	public Object[][] getSavedInfo() {
 		return this.savedInfo;
+	}
+	
+	/**
+	 * Gets the int[] of the current saved row for use with setting up a step
+	 * Note:
+	 * 	- 11 or above indicates a step that is illegal (not allowed)
+	 *  - negative values indicate that the steps will be reduced by the n from the -n
+	 *  - any other number indicates the step the computer will make
+	 * 
+	 * @return	The int[] from the savedInfo AKA the moves available to the player
+	 */
+	public int[] getCurrentRow() {
+		Object[] transfer = this.savedInfo[this.stepsTaken];
+		int[] row = new int[transfer.length - 1];
+		for (int i = 1; i < transfer.length; i++) {
+			row[i - 1] = (int) transfer[i];
+		}
+		return row;
 	}
 
 	/**
@@ -358,24 +378,27 @@ public class Level {
 	 * 				  false: The step is not valid there for the computer cannot make a returning move
 	 */
 	public boolean stepValid(int step) {
-		if (this.steps > this.stepsTaken++) {
+		if (this.steps <= this.stepsTaken) {
 			if (this.levelType != LevelType.CALCULATED)
 				return false;
 		}
 		if (this.levelType == LevelType.RANDOM) {
-			int[] section = this.gSequence[this.stepsTaken++];
+			if (this.gSequence.length < this.stepsTaken + 1) {
+				this.addToGSeq();
+			}
+			int[] section = this.gSequence[this.stepsTaken];
 			int count = 0;
 			for (int i : section) {
-				if (i == -1)
+				if (i == 11)
 					continue;
 				if (step == count)
 					return true;
 				count++;
 			}
 		} else if (this.levelType == LevelType.SAVED) {
-			if (this.savedInfo.length <= this.stepsTaken++)
+			if (this.savedInfo.length <= this.stepsTaken + 1)
 				return false;
-			int val = (int) this.savedInfo[this.stepsTaken++][step];
+			int val = (int) this.savedInfo[this.stepsTaken + 1][step];
 			switch (val) {
 				case -1:
 				case 11:
@@ -387,6 +410,48 @@ public class Level {
 			return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * Checks if the players step made is correct for the computer to make a returning move and move to the next step
+	 * 
+	 * @param step	The step the player has made
+	 * @return		TRUE: The step is correct, meaning there is no reset and the player can move to the next step
+	 * 				FALSE: The step is incorrect there for indicating the level cannot proceed
+	 */
+	public boolean stepCorrect(int step) {
+		if (!this.stepValid(step))
+			return false;
+		if (this.levelType == LevelType.RANDOM) {
+			if (this.gSequence.length < this.stepsTaken + 1) {
+				this.addToGSeq();
+			}
+			int[] section = this.gSequence[this.stepsTaken];
+			int count = 0;
+			for (int i : section) {
+				if (i == 11)
+					continue;
+				if (step == count) {
+					if (i > 0)
+						return true;
+				}
+				count++;
+			}
+			return false;
+		} else if (this.levelType == LevelType.CALCULATED) {
+			if (this.savedInfo.length <= this.stepsTaken + 1)
+				return false;
+			int val = (int) this.savedInfo[this.stepsTaken + 1][step];
+			switch (val) {
+				case -1:
+				case 11:
+					return false;
+				default:
+					return true;
+			}
+		} else {
+			return true;
+		}
 	}
 	
 	/**
@@ -438,7 +503,7 @@ public class Level {
 			}
 			int move = (int) this.savedInfo[this.stepsTaken][step];
 			if (move > 9) { // Shouldn't be possible, so a reset
-				this.reset();
+				this.reset(false);
 				return this.getComputerMove(step);
 			} else if (move < 0) {
 				this.undo(move);
@@ -469,8 +534,15 @@ public class Level {
 	 * 					  -69: Step isn't valid there for the computer cannot make a move
 	 * 					  else: The value of the computers move
 	 */
-	public int nextStep(int previous) {
-		
+	public int nextStep(int current) {
+		if (!this.stepCorrect(current)) {
+			return -69;
+		}
+		this.stepsTaken += 1;
+		this.needsRefresh = true;
+		int move = this.getComputerMove(current);
+		this.solved = move == 9;
+		return move;
 	}
 	
 	/**
@@ -480,7 +552,12 @@ public class Level {
 	 * 							  Refer to the variable documentation on gSequence usage
 	 */
 	public void reset(boolean resetGSequence) {
-		
+		this.previousStep = -1;
+		this.stepsTaken = 0;
+		this.solved = this.needsRefresh = false;
+		if (resetGSequence) {
+			this.gSequence = null;
+		}
 	}
 	
 	/**
@@ -494,46 +571,49 @@ public class Level {
 			return;
 		if (this.choices == 0)
 			return;
-		Random r = new Random();
-		int choice = r.nextInt(9);
-		int[] row = new int[10];
-		for (int i = 0; i < row.length; i++) {
-			row[i] = 11;
-		}
-		int[] chosen = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-		for (int i = 0; i < this.choices; i++) {
-			if (i == 0) {
-				int[] temp = new int[10-(i++)];
-				row[choice] = choice;
-				for (int ii = 0; ii < temp.length; ii++) {
-					if (ii <= choice) {
-						temp[i] = chosen[i++];
-					} else {
-						temp[i] = chosen[i];
-					}
-				}
-				chosen = temp;
-			} else {
-				int choice2 = chosen[r.nextInt(chosen.length)];
-				int[] temp = new int[10-(i++)];
-				row[choice2] = choice2;
-				for (int ii = 0; ii < temp.length; ii++) {
-					if (ii <= choice2) {
-						temp[i] = chosen[i++];
-					} else {
-						temp[i] = chosen[i];
-					}
-				}
-				chosen = temp;
+		int loop = this.stepsTaken - this.gSequence.length;
+		for (int l = 0; l < loop; l ++) {
+			Random r = new Random();
+			int choice = r.nextInt(9);
+			int[] row = new int[10];
+			for (int i = 0; i < row.length; i++) {
+				row[i] = 11;
 			}
-		}
-		int[][] temp = this.gSequence.clone();
-		this.gSequence = new int[(temp.length + 1)][10];
-		for (int i = 0; i < this.gSequence.length; i++) {
-			if (i == (this.gSequence.length 1)) { // Last
-				this.gSequence[i] = row;
-			} else {
-				this.gSequence[i] = temp[i];
+			int[] chosen = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+			for (int i = 0; i < this.choices; i++) {
+				if (i == 0) {
+					int[] temp = new int[10-(i+ 1)];
+					row[choice] = choice;
+					for (int ii = 0; ii < temp.length; ii++) {
+						if (ii <= choice) {
+							temp[i] = chosen[i+ 1];
+						} else {
+							temp[i] = chosen[i];
+						}
+					}
+					chosen = temp;
+				} else {
+					int choice2 = chosen[r.nextInt(chosen.length)];
+					int[] temp = new int[10-(i+ 1)];
+					row[choice2] = choice2;
+					for (int ii = 0; ii < temp.length; ii++) {
+						if (ii <= choice2) {
+							temp[i] = chosen[i+ 1];
+						} else {
+							temp[i] = chosen[i];
+						}
+					}
+					chosen = temp;
+				}
+			}
+			int[][] temp = this.gSequence.clone();
+			this.gSequence = new int[(temp.length + 1)][10];
+			for (int i = 0; i < this.gSequence.length; i++) {
+				if (i == (this.gSequence.length + 1)) { // Last
+					this.gSequence[i] = row;
+				} else {
+					this.gSequence[i] = temp[i];
+				}
 			}
 		}
 	}
@@ -568,7 +648,40 @@ public class Level {
 	 * @return		The new Level object
 	 */
 	public static Level newFrom(Level level) {
-		
+		try {
+			Level val = (Level) level.clone();
+			val.id = UUID.randomUUID();
+			return val;
+		} catch (CloneNotSupportedException e) {
+			return null;
+		}
+	}
+	
+	/**
+	 * Gets a string representation of the object for use with file IO
+	 * 
+	 * @return	The String representation of the Level object
+	 */
+	@Override
+	public String toString() {
+		StringBuilder b = new StringBuilder();
+		if (this.getLevelType() == LevelType.SAVED) {
+			b.append(this.levelNum + ",");
+			b.append(this.levelName + ",");
+			b.append(this.solved + ",");
+			b.append(this.levelType.toString() + ",");
+			b.append(this.steps + ",");
+			b.append(ArrayUtils.intArrToString(this.gSequence) + ",");
+			b.append(ArrayUtils.objArrToString(this.savedInfo));
+		} else {
+			b.append(this.levelNum + ",");
+			b.append(this.levelName + ",");
+			b.append(this.solved + ",");
+			b.append(this.levelType.toString() + ",");
+			b.append(this.steps + ",");
+			b.append(this.expression);
+		}
+		return b.toString();
 	}
 	
 }
