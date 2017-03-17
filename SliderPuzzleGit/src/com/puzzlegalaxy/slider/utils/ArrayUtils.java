@@ -1,5 +1,7 @@
 package com.puzzlegalaxy.slider.utils;
 
+import java.util.Arrays;
+
 import com.puzzlegalaxy.slider.Main;
 import com.puzzlegalaxy.slider.exceptions.InvalidLevelException;
 
@@ -8,7 +10,7 @@ public class ArrayUtils {
 	public static int[][] intArrFromString(String s) throws InvalidLevelException {
 		s = s.replace(" ", "");
 		Main.debug(s);
-		if (s.equals("[]")) {
+		if (s.equals("{[]}")) {
 			return new int[0][0];
 		}
 		if (!s.contains("]") || !s.contains("[") || !s.contains(",")) {
@@ -16,7 +18,7 @@ public class ArrayUtils {
 		}
 		String[] splitY = s.replace("{", "").replace("}", "").replace("]", "").split("\\[");
 		int[][] val = new int[splitY.length][splitY[0].split(",").length];
-		
+
 		for (int i = 0; i < splitY.length; i++) {
 			String[] splitX = splitY[i].split(",");
 			if (splitX.length >= splitY[i].length()) {
@@ -34,10 +36,20 @@ public class ArrayUtils {
 	}
 
 	public static Object[][] objArrFromString(String s) throws InvalidLevelException {
+		Main.debug("STRING TO OBJ[][]: " + s);
 		if (!s.contains("}") || !s.contains("{") || !s.contains("]") || !s.contains("[") || !s.contains(",")) {
 			throw new InvalidLevelException("The specified string is not an valid matrix (Code: 8)");
 		}
 		String[] splitY = s.replace("{", "").replace("}", "").replace("]", "").split("\\[");
+		Main.debug("1: " + Arrays.toString(splitY));
+		if (splitY[0] == null || splitY[0].equals("") || splitY[0].equals(" ")) {
+			String[] temp = new String[splitY.length - 1];
+			for (int i = 1; i < splitY.length; i++) {
+				temp[i - 1] = splitY[i];
+			}
+			splitY = temp;
+		}
+		Main.debug("2: " + Arrays.toString(splitY));
 		Object[][] val = new Object[splitY.length][splitY[0].split(",").length];
 		for (int i = 0; i < splitY.length; i++) {
 			String[] splitX = splitY[i].split(",");
@@ -54,13 +66,13 @@ public class ArrayUtils {
 					} catch (NumberFormatException e) {
 						throw new InvalidLevelException("Only value [0,0] of the matrix can be an Object (Code: 9)");
 					}
-					val[ii][i] = splitX[ii];
+					val[i][ii] = splitX[ii];
 				}
 			}
 		}
 		return val;
 	}
-	
+
 	public static String intArrToString(int[][] a) {
 		StringBuilder b = new StringBuilder();
 		String[] rows = new String[a.length];
@@ -100,5 +112,5 @@ public class ArrayUtils {
 		b.append("]");
 		return b.toString();
 	}
-	
+
 }

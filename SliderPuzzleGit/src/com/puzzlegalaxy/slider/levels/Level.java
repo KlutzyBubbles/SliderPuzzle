@@ -1,8 +1,10 @@
 package com.puzzlegalaxy.slider.levels;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
+import com.puzzlegalaxy.slider.Main;
 import com.puzzlegalaxy.slider.exceptions.InvalidExpressionException;
 import com.puzzlegalaxy.slider.exceptions.InvalidLevelException;
 import com.puzzlegalaxy.slider.utils.ArrayUtils;
@@ -21,7 +23,7 @@ public class Level implements Cloneable {
 	 * altered or removed the level will fail to operate
 	 */
 	private LevelType levelType;
-	
+
 	/**
 	 * canBeNull: Yes, only when levelType does NOT equal LevelType.SAVED
 	 * Restrictions: 
@@ -40,7 +42,7 @@ public class Level implements Cloneable {
 	 * at 1 instead of 0. 
 	 */
 	private Object[][] savedInfo;
-	
+
 	/**
 	 * canBeNull: No, primitive type
 	 * Restrictions:
@@ -56,7 +58,7 @@ public class Level implements Cloneable {
 	 * previousStep:	The previous step taken, used when getting a step setup after an undo or step change
 	 */
 	private int levelNum, steps, previousStep = -1;
-	
+
 	/**
 	 * canBeNull: No, primitive type
 	 * Restrictions:
@@ -70,7 +72,7 @@ public class Level implements Cloneable {
 	 *  choices: if this value is seen to be invalid when generating the level it will default to 1
 	 */
 	private int stepsTaken, choices = 0;
-	
+
 	/**
 	 * canBeNull: No, primitive type
 	 * Restrictions:
@@ -91,7 +93,7 @@ public class Level implements Cloneable {
 	 *  of a Level use, in order to change that, call resetGSeq() after the level closes or before the level starts.
 	 */
 	private int[][] gSequence;
-	
+
 	/**
 	 * canBeNull: Yes, levelName will default to "Level %n" while expression will be defaulted to "x"
 	 * Restrictions:
@@ -103,7 +105,7 @@ public class Level implements Cloneable {
 	 *  expression: The allowed operators are - + * and /, and ( ) brackets are allowed to force an expression to calculate in order
 	 */
 	private String levelName, expression;
-	
+
 	/**
 	 * canBeNull: No, primitive type
 	 * Restrictions:
@@ -115,7 +117,7 @@ public class Level implements Cloneable {
 	 *  needsRefresh: Should only be changed to true if a manual refresh of the level is required due to an illegal variable change
 	 */
 	private boolean solved, needsRefresh = false;
-	
+
 	/**
 	 * canBeNull: No, a null id will result in a new random id being generated, there for creating a new level
 	 * Restrictions:
@@ -126,7 +128,7 @@ public class Level implements Cloneable {
 	 *  The static method newFrom(Level) will clone the supplied Level and will change the id effectively doing what is said above.
 	 */
 	private UUID id;
-	
+
 	/**
 	 * Main constructor containing all parameters needed to initialize the object
 	 * 
@@ -151,7 +153,7 @@ public class Level implements Cloneable {
 		this.solved = solved;
 		this.id = id;
 	}
-	
+
 	/**
 	 * The following constructors are used in the creation of LevelType.DEFAULT, LevelType.CALCULATED and LevelType.RANDOM
 	 * levels, the following rules apply to ALL the below constructors. For information about parameters, see the above variables
@@ -165,31 +167,31 @@ public class Level implements Cloneable {
 	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, String levelName, String expression, UUID id) {
 		this(levelType, null, gSec, levelNum, steps, levelName, expression, false, id);
 	}
-	
+
 	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, String expression, UUID id) {
 		this(levelType, null, gSec, levelNum, steps, "Level %n", expression, false, id);
 	}
-	
+
 	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, String levelName, String expression) {
 		this(levelType, null, gSec, levelNum, steps, levelName, expression, false, UUID.randomUUID());
 	}
-	
+
 	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, String expression) {
 		this(levelType, null, gSec, levelNum, steps, "Level %n", expression, false, UUID.randomUUID());
 	}
-	
+
 	public Level(LevelType levelType, int levelNum, int steps, String levelName, String expression, UUID id) {
 		this(levelType, null, new int[0][0], levelNum, steps, levelName, expression, false, id);
 	}
-	
+
 	public Level(LevelType levelType, int levelNum, int steps, String expression, UUID id) {
 		this(levelType, null, new int[0][0], levelNum, steps, "Level %n", expression, false, id);
 	}
-	
+
 	public Level(LevelType levelType, int levelNum, int steps, String levelName, String expression) {
 		this(levelType, null, new int[0][0], levelNum, steps, levelName, expression, false, UUID.randomUUID());
 	}
-	
+
 	public Level(LevelType levelType, int levelNum, int steps, String expression) {
 		this(levelType, null, new int[0][0], levelNum, steps, "Level %n", expression, false, UUID.randomUUID());
 	}
@@ -215,7 +217,7 @@ public class Level implements Cloneable {
 	public Object[][] getSavedInfo() {
 		return this.savedInfo;
 	}
-	
+
 	/**
 	 * Gets the int[] of the current saved row for use with setting up a step
 	 * Note:
@@ -226,10 +228,16 @@ public class Level implements Cloneable {
 	 * @return	The int[] from the savedInfo AKA the moves available to the player
 	 */
 	public int[] getCurrentRow() {
-		Object[] transfer = this.savedInfo[this.stepsTaken];
+		if (this.savedInfo.length <= this.stepsTaken + 1) {
+			this.solved = true;
+			return new int[0];
+		}
+		Object[] transfer = this.savedInfo[this.stepsTaken + 1];
 		int[] row = new int[transfer.length - 1];
+		Main.debug("SIZE: " + this.stepsTaken);
+		Main.debug(Arrays.toString(row));
 		for (int i = 1; i < transfer.length; i++) {
-			row[i - 1] = (int) transfer[i];
+			row[i - 1] = Integer.parseInt((String) transfer[i]);
 		}
 		return row;
 	}
@@ -294,7 +302,7 @@ public class Level implements Cloneable {
 	public String getExpression() {
 		return expression;
 	}
-	
+
 	/**
 	 * Gets the amount of total steps that are allowed to be taken
 	 * 
@@ -312,7 +320,7 @@ public class Level implements Cloneable {
 	public boolean doesNeedsRefresh() {
 		return needsRefresh;
 	}
-	
+
 	/**
 	 * Gets the solved state of the Level object
 	 * 
@@ -369,7 +377,7 @@ public class Level implements Cloneable {
 	public void setExpression(String expression) {
 		this.expression = expression;
 	}
-	
+
 	/**
 	 * Checks if the players step made is valid for the computer to make a returning move
 	 * 
@@ -379,7 +387,8 @@ public class Level implements Cloneable {
 	 */
 	public boolean stepValid(int step) {
 		if (this.steps <= this.stepsTaken) {
-			if (this.levelType != LevelType.CALCULATED)
+			Main.debug("SMALLER");
+			if (this.levelType != LevelType.SAVED)
 				return false;
 		}
 		if (this.levelType == LevelType.RANDOM) {
@@ -396,22 +405,25 @@ public class Level implements Cloneable {
 				count++;
 			}
 		} else if (this.levelType == LevelType.SAVED) {
-			if (this.savedInfo.length <= this.stepsTaken + 1)
+			Main.debug("SAVED");
+			if (this.savedInfo.length < this.stepsTaken + 1)
 				return false;
-			int val = (int) this.savedInfo[this.stepsTaken + 1][step];
+			//                Main.debug("STEPS TAKEN: " + this.stepsTaken);
+			Main.debug("PRINT: " + Arrays.toString(this.savedInfo[this.stepsTaken + 1]));
+			int val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
+			Main.debug("NUM: " + val);
 			switch (val) {
-				case -1:
-				case 11:
-					return false;
-				default:
-					return true;
+			case 11:
+				return false;
+			default:
+				return true;
 			}
 		} else {
 			return true;
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Checks if the players step made is correct for the computer to make a returning move and move to the next step
 	 * 
@@ -441,19 +453,19 @@ public class Level implements Cloneable {
 		} else if (this.levelType == LevelType.CALCULATED) {
 			if (this.savedInfo.length <= this.stepsTaken + 1)
 				return false;
-			int val = (int) this.savedInfo[this.stepsTaken + 1][step];
+			int val = (int) this.savedInfo[this.stepsTaken + 1][step + 1];
 			switch (val) {
-				case -1:
-				case 11:
-					return false;
-				default:
-					return true;
+			case 0:
+			case 11:
+				return false;
+			default:
+				return true;
 			}
 		} else {
 			return true;
 		}
 	}
-	
+
 	/**
 	 * Gets the move the computer will make in return to the players move
 	 * 
@@ -501,8 +513,9 @@ public class Level implements Cloneable {
 			} else if (this.savedInfo[this.stepsTaken].length < (step + 1)) {
 				return -69;
 			}
-			int move = (int) this.savedInfo[this.stepsTaken][step];
+			int move = Integer.parseInt((String) this.savedInfo[this.stepsTaken - 1][step + 1]);
 			if (move > 9) { // Shouldn't be possible, so a reset
+				Main.debug("OH NO");
 				this.reset(false);
 				return this.getComputerMove(step);
 			} else if (move < 0) {
@@ -513,7 +526,7 @@ public class Level implements Cloneable {
 			}
 		}
 	}
-	
+
 	/**
 	 * moves to the next step in the Level object
 	 * 
@@ -524,7 +537,7 @@ public class Level implements Cloneable {
 	public void nextStep() {
 		this.stepsTaken += 1;
 	}
-	
+
 	/**
 	 * Sets the step and its relating variables relative to the previous step choice
 	 * 
@@ -538,13 +551,14 @@ public class Level implements Cloneable {
 		if (!this.stepCorrect(current)) {
 			return -69;
 		}
-		this.stepsTaken += 1;
 		this.needsRefresh = true;
 		int move = this.getComputerMove(current);
+		Main.debug("MOVE: " + this.stepsTaken);
+		this.stepsTaken++;
 		this.solved = move == 9;
 		return move;
 	}
-	
+
 	/**
 	 * Resets the Level object to its default state.
 	 * 
@@ -559,7 +573,7 @@ public class Level implements Cloneable {
 			this.gSequence = null;
 		}
 	}
-	
+
 	/**
 	 * Add a new row to the gSequence if needed
 	 * 
@@ -617,7 +631,7 @@ public class Level implements Cloneable {
 			}
 		}
 	}
-	
+
 	/**
 	 * Undoes the steps taken by the amount supplied, this needs to be followed up with
 	 * an update otherwise the level might crash
@@ -628,7 +642,7 @@ public class Level implements Cloneable {
 		this.stepsTaken -= steps;
 		this.stepsTaken = this.stepsTaken < 0 ? 0 : this.stepsTaken;
 	}
-	
+
 	/**
 	 * Gets the setup step AKA the computers move of the current step.
 	 * NOTE: This does NOT update the step, it only returns a value.
@@ -638,9 +652,9 @@ public class Level implements Cloneable {
 	public int getStepSetup() {
 		if (this.previousStep == -1)
 			return 0;
-		return this.stepsTaken == 0 ? 0 : this.gSequence[this.stepsTaken--][this.previousStep];
+		return this.stepsTaken == 0 ? 0 : this.gSequence[this.stepsTaken - 1][this.previousStep];
 	}
-	
+
 	/**
 	 * Gets a new Level object from the supplied Level object with a different id
 	 * 
@@ -656,7 +670,7 @@ public class Level implements Cloneable {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Gets a string representation of the object for use with file IO
 	 * 
@@ -683,5 +697,5 @@ public class Level implements Cloneable {
 		}
 		return b.toString();
 	}
-	
+
 }
