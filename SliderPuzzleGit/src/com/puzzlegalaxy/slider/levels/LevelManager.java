@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -408,7 +409,19 @@ public class LevelManager {
 	 * Loads all the level files in the 'levels' folder into memory, any invalid levels will be ignored
 	 */
 	public void loadLevels() {
-		File folder = new File("src/levels/");
+		String fs = System.getProperty("file.separator");
+		String path = "";
+		try {
+			path = Main.getProgramPath();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		if (path.equals("")) {
+			Main.debug("Something went wrong");
+			Main.finish();
+		}
+		String dir = path + fs + "levels" + fs;
+		File folder = new File(dir);
 		File[] files = folder.listFiles();
 		Main.debug("loadLevels(): " + files.length + " length");
 		for (int i = 0; i < files.length; i++) {
