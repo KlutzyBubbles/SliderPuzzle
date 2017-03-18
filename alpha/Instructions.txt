@@ -1,6 +1,4 @@
-To play the alpha replace {folder} in the run-template.bat with the absolute path to the folder of the .jar (eg. C:\Users\LeeTzil\Downloads\SilderPuzzleBuilds)
-
-Run the run-template.bat i will attempt to explain some of what is shown on screen.
+To play the alpha just run the run-template.bat file
 
 v0.0.1
 
