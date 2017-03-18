@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<command name="exit">
+	<description>Exit the program</description>
+	<alias>finish</alias>
+	<alias>close</alias>
+	<alias>stop</alias>
+</command>
