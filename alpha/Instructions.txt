@@ -1,0 +1,16 @@
+To play the alpha replace {folder} in the run-template.bat with the absolute path to the folder of the .jar (eg. C:\Users\LeeTzil\Downloads\SilderPuzzleBuilds)
+
+Run the run-template.bat i will attempt to explain some of what is shown on screen.
+
+v0.0.1
+
+This has a F*** ton of debug messages and may look very boring when you first open it, dont worry through the only things you have to focus on are:
+
+"Main#main-75: Enter your move:"
+"Main#main-76: ROW: [x, x, x, x, x, x, x, x, x, x]"
+
+The first one is your instructions, the second is a cheat sheet to test out the level, the ROW represents what is a valid move or not (0 is reset, 11 is invalid, x is correct)
+
+Commands:
+
+.exit - exits the application without having to solve the puzzle, but solving the puzzle gives you a cool message at the end
