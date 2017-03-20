@@ -55,12 +55,12 @@ public class ArrayUtils {
 			String[] splitX = splitY[i].split(",");
 			if (splitX.length >= val.length) {
 				for (int ii = 0; ii < splitX.length; ii++) {
-					Main.debug("[" + ii + "," + i + "]");
+					Main.debugLoop("[" + ii + "," + i + "]");
 					if (i == 0 && ii == 0) {
 						val[i][ii] = splitX[ii];
 						continue;
 					}
-					Main.debug("NUM: " + splitX[ii]);
+					Main.debugLoop("NUM: " + splitX[ii]);
 					try {
 						Integer.parseInt(splitX[ii]);
 					} catch (NumberFormatException e) {
@@ -88,6 +88,18 @@ public class ArrayUtils {
 		b.append("[");
 		for (String row : rows) {
 			b.append(row);
+		}
+		b.append("]");
+		return b.toString();
+	}
+	
+	public static String intArrToString(int[] a) {
+		StringBuilder b = new StringBuilder("[");
+		String splitter = "";
+		for (int i : a) {
+			b.append(splitter);
+			b.append(i);
+			splitter = ",";
 		}
 		b.append("]");
 		return b.toString();

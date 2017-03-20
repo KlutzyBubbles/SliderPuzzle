@@ -153,6 +153,31 @@ public class Level implements Cloneable {
 		this.solved = solved;
 		this.id = id;
 	}
+	
+	/**
+	 * Main constructor containing all parameters needed to initialize the object
+	 * 
+	 * @param levelType		The type of level from the LevelType enum
+	 * @param savedInfo		The 2D array of information needed for LevelType.SAVED levels
+	 * @param gSec			The 2D array of information about the generated sequence, only used for LevelType.RANDOM
+	 * @param levelNum		The number that will be assigned to the level (doesn't have to be unique)
+	 * @param steps			The maximum amount of steps that can be taken in a level (only used in LevelType.RANDOM)
+	 * @param levelName		The display name of the level being initialized ('%n' will be replaced with the level number by default)
+	 * @param choices		The amount of choices the level can have (used with LevelType.RANDOM)
+	 * @param solved		The current state of the level (only for display purposes, doesn't affect the level itself)
+	 * @param id			The UUID for the level object, if any two ID's are the same the levels will be merged
+	 */
+	public Level(LevelType levelType, Object[][] savedInfo, int[][] gSec, int levelNum, int steps, String levelName, int choices, boolean solved, UUID id) {
+		this.levelType = levelType;
+		this.savedInfo = savedInfo;
+		this.levelNum = levelNum;
+		this.steps = steps;
+		this.gSequence = gSec;
+		this.levelName = levelName;
+		this.choices = choices;
+		this.solved = solved;
+		this.id = id;
+	}
 
 	/**
 	 * The following constructors are used in the creation of LevelType.DEFAULT, LevelType.CALCULATED and LevelType.RANDOM
@@ -195,6 +220,38 @@ public class Level implements Cloneable {
 	public Level(LevelType levelType, int levelNum, int steps, String expression) {
 		this(levelType, null, new int[0][0], levelNum, steps, "Level %n", expression, false, UUID.randomUUID());
 	}
+	
+	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, String levelName, int choices, UUID id) {
+		this(levelType, null, gSec, levelNum, steps, levelName, choices, false, id);
+	}
+
+	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, int choices, UUID id) {
+		this(levelType, null, gSec, levelNum, steps, "Level %n", choices, false, id);
+	}
+
+	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, String levelName, int choices) {
+		this(levelType, null, gSec, levelNum, steps, levelName, choices, false, UUID.randomUUID());
+	}
+
+	public Level(LevelType levelType, int[][] gSec, int levelNum, int steps, int choices) {
+		this(levelType, null, gSec, levelNum, steps, "Level %n", choices, false, UUID.randomUUID());
+	}
+
+	public Level(LevelType levelType, int levelNum, int steps, String levelName, int choices, UUID id) {
+		this(levelType, null, new int[0][0], levelNum, steps, levelName, choices, false, id);
+	}
+
+	public Level(LevelType levelType, int levelNum, int steps, int choices, UUID id) {
+		this(levelType, null, new int[0][0], levelNum, steps, "Level %n", choices, false, id);
+	}
+
+	public Level(LevelType levelType, int levelNum, int steps, String levelName, int choices) {
+		this(levelType, null, new int[0][0], levelNum, steps, levelName, choices, false, UUID.randomUUID());
+	}
+
+	public Level(LevelType levelType, int levelNum, int steps, int choices) {
+		this(levelType, null, new int[0][0], levelNum, steps, "Level %n", choices, false, UUID.randomUUID());
+	}
 	/** END CONSTRUCTORS **/
 
 	/**
@@ -228,15 +285,31 @@ public class Level implements Cloneable {
 	 * @return	The int[] from the savedInfo AKA the moves available to the player
 	 */
 	public int[] getCurrentRow() {
+		if (this.getLevelType() != LevelType.SAVED) {
+			Main.debug("NOT SAVED TYPE");
+			try {
+				this.addToGSeq();
+			} catch (InvalidLevelException e) {
+				return null;
+			}
+			int[] def = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+			if (this.getGeneratedSequence().length == 0)
+				return def;
+			Main.debug(this.getStepsTaken() + " STEPS");
+			int[] row = this.getStepsTaken() == 0 ? this.getGeneratedSequence()[0] : this.getGeneratedSequence()[this.getStepsTaken() - 1];
+			return row;
+		}
 		if (this.savedInfo.length <= this.stepsTaken + 1) {
 			this.solved = true;
 			return new int[0];
 		}
 		Object[] transfer = this.savedInfo[this.stepsTaken + 1];
+		Main.debug(ArrayUtils.objArrToString(this.savedInfo));
 		int[] row = new int[transfer.length - 1];
 		Main.debug("SIZE: " + this.stepsTaken);
 		Main.debug(Arrays.toString(row));
 		for (int i = 1; i < transfer.length; i++) {
+			Main.debug("TRANSFER: " + transfer[i]);
 			row[i - 1] = Integer.parseInt((String) transfer[i]);
 		}
 		return row;
@@ -377,6 +450,20 @@ public class Level implements Cloneable {
 	public void setExpression(String expression) {
 		this.expression = expression;
 	}
+	
+	/**
+	 * Checks if the level is out of steps to perform
+	 * 
+	 * @return	Whether or not the user can make more steps
+	 */
+	public boolean outOfSteps() {
+		if (this.steps <= this.stepsTaken) {
+			Main.debug("SMALLER");
+			if (this.levelType != LevelType.SAVED)
+				return true;
+		}
+		return false;
+	}
 
 	/**
 	 * Checks if the players step made is valid for the computer to make a returning move
@@ -386,34 +473,52 @@ public class Level implements Cloneable {
 	 * 				  false: The step is not valid there for the computer cannot make a returning move
 	 */
 	public boolean stepValid(int step) {
-		if (this.steps <= this.stepsTaken) {
+		if (this.steps < this.stepsTaken) {
 			Main.debug("SMALLER");
 			if (this.levelType != LevelType.SAVED)
 				return false;
 		}
 		if (this.levelType == LevelType.RANDOM) {
-			if (this.gSequence.length < this.stepsTaken + 1) {
-				this.addToGSeq();
+			if (this.gSequence.length <= this.stepsTaken) {
+				Main.debug("SMALLER THAN");
+				try {
+					this.addToGSeq();
+				} catch (InvalidLevelException e) {
+					return false;
+				}
 			}
+			Main.debug("LENGTH: " + this.stepsTaken);
 			int[] section = this.gSequence[this.stepsTaken];
+			Main.debug(ArrayUtils.intArrToString(section));
+			Main.debug("STEP: " + step);
 			int count = 0;
 			for (int i : section) {
-				if (i == 11)
+				Main.debugLoop(count + ": " + i);
+				if (i == 11) {
+					if (count == step) {
+						this.reset(false);
+						return false;
+					}
+					count++;
 					continue;
-				if (step == count)
+				}
+				Main.debugLoop("Count: " + count);
+				if (step == count) {
+					Main.debug("RETURNED");
 					return true;
+				}
 				count++;
 			}
 		} else if (this.levelType == LevelType.SAVED) {
 			Main.debug("SAVED");
 			if (this.savedInfo.length < this.stepsTaken + 1)
 				return false;
-			//                Main.debug("STEPS TAKEN: " + this.stepsTaken);
 			Main.debug("PRINT: " + Arrays.toString(this.savedInfo[this.stepsTaken + 1]));
 			int val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
 			Main.debug("NUM: " + val);
 			switch (val) {
 			case 11:
+				this.reset(false);
 				return false;
 			default:
 				return true;
@@ -436,13 +541,19 @@ public class Level implements Cloneable {
 			return false;
 		if (this.levelType == LevelType.RANDOM) {
 			if (this.gSequence.length < this.stepsTaken + 1) {
-				this.addToGSeq();
+				try {
+					this.addToGSeq();
+				} catch (InvalidLevelException e) {
+					return false;
+				}
 			}
 			int[] section = this.gSequence[this.stepsTaken];
 			int count = 0;
 			for (int i : section) {
-				if (i == 11)
+				if (i == 11) {
+					count++;
 					continue;
+				}
 				if (step == count) {
 					if (i > 0)
 						return true;
@@ -450,10 +561,10 @@ public class Level implements Cloneable {
 				count++;
 			}
 			return false;
-		} else if (this.levelType == LevelType.CALCULATED) {
+		} else if (this.levelType == LevelType.SAVED) {
 			if (this.savedInfo.length <= this.stepsTaken + 1)
 				return false;
-			int val = (int) this.savedInfo[this.stepsTaken + 1][step + 1];
+			int val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
 			switch (val) {
 			case 0:
 			case 11:
@@ -479,9 +590,11 @@ public class Level implements Cloneable {
 			return 0;
 		if (step < 0 || step > 9)
 			return -69;
-		if (this.levelType == LevelType.DEFAULT)
+		if (this.levelType == LevelType.DEFAULT) {
+			if (step == 9)
+				this.setSolved(true);
 			return step;
-		if (this.levelType == LevelType.CALCULATED) {
+		} else if (this.levelType == LevelType.CALCULATED) {
 			Equation e = new Equation(this.expression, step);
 			int result = -1;
 			try {
@@ -501,12 +614,21 @@ public class Level implements Cloneable {
 				ex.printStackTrace();
 				return -1;
 			}
+			if (result == 9)
+				this.setSolved(true);
 			return result;
 		} else if (this.levelType == LevelType.RANDOM) {
 			if (this.gSequence.length != (this.stepsTaken + 1)) {
-				this.addToGSeq();
+				try {
+					this.addToGSeq();
+				} catch (InvalidLevelException e) {
+					return -69;
+				}
 			}
-			return this.gSequence[this.stepsTaken][step];
+			int move = this.gSequence[this.stepsTaken - 1][step];
+			if (move == 9)
+				this.setSolved(true);
+			return move;
 		} else { // SAVED
 			if (this.savedInfo.length <= (this.stepsTaken + 1)) {
 				return -69;
@@ -522,6 +644,8 @@ public class Level implements Cloneable {
 				this.undo(move);
 				return this.getComputerMove(step);
 			} else {
+				if (move == 9)
+					this.setSolved(true);
 				return move;
 			}
 		}
@@ -552,9 +676,9 @@ public class Level implements Cloneable {
 			return -69;
 		}
 		this.needsRefresh = true;
+		this.stepsTaken++;
 		int move = this.getComputerMove(current);
 		Main.debug("MOVE: " + this.stepsTaken);
-		this.stepsTaken++;
 		this.solved = move == 9;
 		return move;
 	}
@@ -580,53 +704,120 @@ public class Level implements Cloneable {
 	 * WARNING: This should only be used by the Level object itself but can be called
 	 * 			elsewhere, make sure you understand the usage of gSequence before using this
 	 */
-	public void addToGSeq() {
-		if (this.gSequence.length >= this.stepsTaken)
+	public void addToGSeq() throws InvalidLevelException {
+		Main.debug("CALL");
+		if (this.gSequence == null) {
+			Main.debug("NULL");
+			this.gSequence = new int[0][10];
+		}
+		if (this.getLevelType() == LevelType.SAVED) {
+			Main.debug("SAVED");
 			return;
-		if (this.choices == 0)
-			return;
-		int loop = this.stepsTaken - this.gSequence.length;
-		for (int l = 0; l < loop; l ++) {
-			Random r = new Random();
-			int choice = r.nextInt(9);
-			int[] row = new int[10];
-			for (int i = 0; i < row.length; i++) {
-				row[i] = 11;
-			}
-			int[] chosen = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-			for (int i = 0; i < this.choices; i++) {
-				if (i == 0) {
-					int[] temp = new int[10-(i+ 1)];
-					row[choice] = choice;
-					for (int ii = 0; ii < temp.length; ii++) {
-						if (ii <= choice) {
-							temp[i] = chosen[i+ 1];
-						} else {
-							temp[i] = chosen[i];
-						}
+		} else if (this.getLevelType() == LevelType.CALCULATED) {
+			Main.debug("CALCULATED");
+			if (this.getExpression() == null)
+				throw new InvalidLevelException("The calculated level doesnt have an expression");
+			int loop = this.stepsTaken - this.gSequence.length;
+			for (int l = 0; l < loop; l++) {
+				int[] row = new int[10];
+				Equation e = new Equation(this.expression);
+				for (int i = 0; i < row.length; i++) {
+					e.setNum(i);
+					try {
+						e.evaluate();
+						row[i] = e.getRoundedResult();
+					} catch (InvalidExpressionException ex) {
+						ex.printStackTrace();
+						throw new InvalidLevelException("The calculated level failed to evaluate the expression");
 					}
-					chosen = temp;
-				} else {
-					int choice2 = chosen[r.nextInt(chosen.length)];
-					int[] temp = new int[10-(i+ 1)];
-					row[choice2] = choice2;
-					for (int ii = 0; ii < temp.length; ii++) {
-						if (ii <= choice2) {
-							temp[i] = chosen[i+ 1];
-						} else {
-							temp[i] = chosen[i];
-						}
+				}
+				int[][] temp = this.gSequence.clone();
+				this.gSequence = new int[(temp.length + 1)][10];
+				Main.debug("SIZE: " + temp.length);
+				for (int i = 0; i < this.gSequence.length; i++) {
+					if (i == (this.gSequence.length - 1)) { // Last
+						this.gSequence[i] = row;
+					} else {
+						this.gSequence[i] = temp[i];
 					}
-					chosen = temp;
 				}
 			}
-			int[][] temp = this.gSequence.clone();
-			this.gSequence = new int[(temp.length + 1)][10];
-			for (int i = 0; i < this.gSequence.length; i++) {
-				if (i == (this.gSequence.length + 1)) { // Last
-					this.gSequence[i] = row;
-				} else {
-					this.gSequence[i] = temp[i];
+		} else if (this.getLevelType() == LevelType.DEFAULT) {
+			Main.debug("DEFAULT");
+			if (this.gSequence.length == 0) {
+				int[] row = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+				this.gSequence = new int[1][10];
+				this.gSequence[0] = row;
+			} else {
+				int loop = this.stepsTaken - this.gSequence.length;
+				int[] row = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+				for (int l = 0; l < loop; l++) {
+					int[][] temp = this.gSequence.clone();
+					this.gSequence = new int[(temp.length + 1)][10];
+					Main.debug("SIZE: " + temp.length);
+					for (int i = 0; i < this.gSequence.length; i++) {
+						if (i == (this.gSequence.length - 1)) { // Last
+							this.gSequence[i] = row;
+						} else {
+							this.gSequence[i] = temp[i];
+						}
+					}
+				}
+			}
+		} else {
+			Main.debug("ELSE");
+			if (this.gSequence.length > this.stepsTaken) {
+				Main.debug("ARR: " + ArrayUtils.intArrToString(this.gSequence[this.stepsTaken]));
+				Main.debug("GREATER THAN");
+				return;
+			}
+			if (this.choices == 0) {
+				Main.debug("CHOICES");
+				return;
+			}
+			int loop = this.stepsTaken + 1 - this.gSequence.length;
+			for (int l = 0; l < loop; l++) {
+				Random r = new Random();
+				int choice = this.steps == this.stepsTaken ? 9 : r.nextInt(7) + 1;
+				int[] row = new int[10];
+				for (int i = 0; i < row.length; i++) {
+					row[i] = 11;
+				}
+				int[] chosen = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+				for (int i = 0; i < this.choices; i++) {
+					if (i == 0) {
+						int[] temp = new int[10-(i+ 1)];
+						row[choice] = choice;
+						for (int ii = 0; ii < temp.length; ii++) {
+							if (ii <= choice) {
+								temp[i] = chosen[i+ 1];
+							} else {
+								temp[i] = chosen[i];
+							}
+						}
+						chosen = temp;
+					} else {
+						int choice2 = chosen[r.nextInt(chosen.length)];
+						int[] temp = new int[10-(i+ 1)];
+						row[choice2] = choice2;
+						for (int ii = 0; ii < temp.length; ii++) {
+							if (ii <= choice2) {
+								temp[i] = chosen[i+ 1];
+							} else {
+								temp[i] = chosen[i];
+							}
+						}
+						chosen = temp;
+					}
+				}
+				int[][] temp = this.gSequence.clone();
+				this.gSequence = new int[(temp.length + 1)][10];
+				for (int i = 0; i < this.gSequence.length; i++) {
+					if (i == (this.gSequence.length - 1)) { // Last
+						this.gSequence[i] = row;
+					} else {
+						this.gSequence[i] = temp[i];
+					}
 				}
 			}
 		}

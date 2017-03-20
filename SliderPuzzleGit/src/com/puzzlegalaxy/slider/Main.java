@@ -23,10 +23,11 @@ import com.puzzlegalaxy.slider.utils.ResourceUtil;
 
 public class Main {
 
-	public static boolean debug = true;
-	public static boolean debugLoop = true;
+	public static boolean debug = false;
+	public static boolean debugLoop = false;
 	public static LevelManager lm;
 	private static Scanner s = new Scanner(System.in);
+	private static Level l;
 
 	public static void main(String[] args) {
 		
@@ -68,42 +69,63 @@ public class Main {
 		lm = new LevelManager();
 		lm.loadLevels();
 		
-		int n = 1;
-		Level l = lm.getLevel(n);
+		// 0 = SAVED, 1 = SAVED, 2 = DEFAULT, 3 = CALCULATED, 4 = RANDOM
+		int n = 4;
+		l = lm.getLevel(n);
 		while (!l.isSolved()) {
+			if (l.isSolved())
+				return;
 			debug("SETUP: " + l.getStepSetup());
-			debug("Enter your move: ");
+			System.out.println("Enter your move: ");
 			debug("ROW: " + Arrays.toString(l.getCurrentRow()));
 			if (l.getCurrentRow().length == 0) {
-				debug("YAY You solved it");
+				System.out.println("YAY You solved it");
 			} else {
 				String text = s.next();
-				if (text.startsWith(".")) {
-					boolean executed = CommandHandler.executeCommand(text.substring(1, text.length()));
-					if (!executed)
-						Main.debug("Damn the command didnt work");
-				}
-				int move;
-				try {
-					move = Integer.parseInt(text);
-				} catch (NumberFormatException e) {
-					debug("Please enter a number or a command");
-					return;
-				}
-				debug("LEVEL: " + l.toString());
-				if (!l.stepValid(move)) {
-					debug("Your move wasnt valid");
-				} else if (!l.stepCorrect(move)) {
-					debug("Your move wasnt correct");
-				} else {
-					debug("Computer Move: " + l.nextStep(move));
-					if (l.isSolved()) {
-						debug("YAY You solved it");
-					}
-				}
+				doMove(text, 0);
 			}
+			if (l.isSolved())
+				return;
 		}
 		s.close();
+	}
+	
+	public static void doMove(String text, int loop) {
+		if (text.startsWith(".")) {
+			boolean executed = CommandHandler.executeCommand(text.substring(1, text.length()));
+			if (!executed) {
+				System.out.println("Damn the command didnt work");
+				return;
+			}
+		}
+		int move;
+		try {
+			move = Integer.parseInt(text);
+		} catch (NumberFormatException e) {
+			System.out.println("Please enter a number or a command");
+			return;
+		}
+		if (move < 1 || move > 9) {
+			System.out.println("Please enter a number between 1-9");
+			return;
+		}
+		debug("LEVEL: " + l.toString());
+		if (!l.stepValid(move)) {
+			System.out.println("Your move wasnt valid");
+			if (l.outOfSteps()) {
+				l.reset(false);
+				if (loop > 5)
+					finish();
+				doMove(text, loop++);
+			}
+		} else if (!l.stepCorrect(move)) {
+			System.out.println("Your move wasnt correct");
+		} else {
+			System.out.println("Computer Move: " + l.nextStep(move));
+			if (l.isSolved()) {
+				System.out.println("YAY You solved it");
+			}
+		}
 	}
 
 	public static void debug(String msg) {

@@ -39,6 +39,7 @@ public class Equation {
 
 	public void setNum(int num) {
 		this.num = num;
+		this.tokenized = false;
 	}
 	
 	public double getRawResult() throws InvalidExpressionException {

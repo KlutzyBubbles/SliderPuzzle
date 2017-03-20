@@ -219,7 +219,7 @@ public class LevelManager {
 				val[0] += "," + split[i];
 			}
 			val[1] = split[6];
- 		}
+		}
 
 		if (val[0].startsWith(",")) {
 			val[0] = val[0].replaceFirst(",", "");
@@ -275,17 +275,26 @@ public class LevelManager {
 		if (l == LevelType.SAVED) {
 			ArrayUtils.objArrFromString(level[1]);
 		} else {
-			String exp = level[1].replace("\\{", "").replace("\\}", "").replace("]", "").replace("[", "");
-			Main.debug("validateLevel(String[]): EXP: " + exp);
-			Equation e = new Equation(exp, 1);
-			try {
-				e.evaluate();
-			} catch (InvalidExpressionException ex) {
-				ex.printStackTrace();
-				throw new InvalidLevelException("The equation cannot be computed (Code: 10)");
+			if (l == LevelType.RANDOM) {
+				try {
+					Integer.parseInt(level[1]);
+				} catch (NumberFormatException e) {
+					e.printStackTrace();
+					throw new InvalidLevelException("The random level choices isnt a number (Code: 11)");
+				}
+			} else {
+				String exp = level[1].replace("\\{", "").replace("\\}", "").replace("]", "").replace("[", "");
+				Main.debug("validateLevel(String[]): EXP: " + exp);
+				Equation e = new Equation(exp, 1);
+				try {
+					e.evaluate();
+				} catch (InvalidExpressionException ex) {
+					ex.printStackTrace();
+					throw new InvalidLevelException("The equation cannot be computed (Code: 10)");
+				}
+				if (!e.isValid())
+					throw new InvalidLevelException("The equation cannot be computed (Code: 10)");
 			}
-			if (!e.isValid())
-				throw new InvalidLevelException("The equation cannot be computed (Code: 10)");
 		}
 		return true;
 	}
@@ -313,7 +322,11 @@ public class LevelManager {
 		if (l == LevelType.SAVED) {
 			value = new Level(l, ArrayUtils.objArrFromString(level[1]), gSec, levelNum, steps, levelName, "", solved, uuid);
 		} else {
-			value = new Level(l, gSec, levelNum, steps, levelName, level[1], uuid);
+			if (l == LevelType.RANDOM) {
+				value = new Level(l, gSec, levelNum, steps, levelName, Integer.parseInt(level[1]), uuid);
+			} else {
+				value = new Level(l, gSec, levelNum, steps, levelName, level[1], uuid);
+			}
 		}
 		this.levels.add(value);
 		return value;
@@ -391,7 +404,7 @@ public class LevelManager {
 			}
 		}
 	}
-	
+
 	/**
 	 * Prints all information in raw format about all of the levels available
 	 */
