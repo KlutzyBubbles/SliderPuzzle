@@ -113,11 +113,14 @@ public class CommandHandler {
 	}
 	
 	public static boolean executeCommand(String full) {
+		Main.debug("COMMAND:");
 		if (full.contains(" ")) {
 			String[] split = full.split(" ");
 			Command c = getCommand(split[0]);
-			if (c == null)
+			if (c == null) {
+				Main.debug("IS NULL");
 				return false;
+			}
 			String[] args = new String[split.length - 1];
 			for (int i = 1; i < split.length; i++) {
 				args[i - 1] = split[i];
@@ -125,8 +128,10 @@ public class CommandHandler {
 			return c.dispatchCommand(args);
 		} else {
 			Command c = getCommand(full);
-			if (c == null)
+			if (c == null) {
+				Main.debug("IS NULL");
 				return false;
+			}
 			return c.dispatchCommand();
 		}
 	}
