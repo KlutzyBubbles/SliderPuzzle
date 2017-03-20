@@ -23,7 +23,7 @@ import com.puzzlegalaxy.slider.utils.ResourceUtil;
 
 public class Main {
 
-	public static boolean debug = false;
+	public static boolean debug = true;
 	public static boolean debugLoop = false;
 	public static LevelManager lm;
 	private static Scanner s = new Scanner(System.in);
