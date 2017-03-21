@@ -30,6 +30,18 @@ public class LevelManager {
 	private List<Level> levels = new ArrayList<Level>();
 
 	/**
+	 * canBeNull: No, Defaults to level 0
+	 * Restrictions:
+	 * 	- Level object cannot be null or invalid
+	 * 
+	 * Note:
+	 * 	This value is used globally and is static for a reason
+	 */
+	private static Level level;
+	
+	public static boolean updated = false;
+	
+	/**
 	 * Main constructor used for loading a Level Manager that may have previously been in use
 	 * 
 	 * @param levels	The list of levels currently loaded
@@ -91,6 +103,34 @@ public class LevelManager {
 		}
 		Main.debug("levelExists(int): Level doesnt exist with " + this.levels.size() + " Levels inside the list");
 		return false;
+	}
+	
+	public static Level getCurrentLevel() {
+		if (level == null) {
+			if (Main.getLevelManager().getLevelCount() == 0)
+				return null;
+			level = Main.getLevelManager().getLevel(0);
+		}
+		return level;
+	}
+	
+	public static void setCurrentLevel(Level l) {
+		if (l == null)
+			return;
+		level = l;
+		updated = false;
+	}
+	
+	public void loadDefaultLevel() {
+		if (this.levels.isEmpty())
+			return;
+		level = this.levels.get(0);
+	}
+	
+	public Level getLevelFromIndex(int index) {
+		if (this.levels.size() <= index)
+			return null;
+		return this.levels.get(index);
 	}
 
 	/**
@@ -466,6 +506,7 @@ public class LevelManager {
 				Main.debug("loadLevels(): File contained an invalid level (see above)");
 			}
 		}
+		this.loadDefaultLevel();
 	}
 
 }

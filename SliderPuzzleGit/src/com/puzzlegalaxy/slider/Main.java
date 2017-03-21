@@ -6,18 +6,23 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
+
+import javax.swing.JOptionPane;
+import javax.swing.JTextArea;
 
 import com.puzzlegalaxy.slider.commands.Command;
 import com.puzzlegalaxy.slider.commands.CommandHandler;
 import com.puzzlegalaxy.slider.exceptions.InvalidCommandException;
 import com.puzzlegalaxy.slider.executors.ExitCommand;
 import com.puzzlegalaxy.slider.executors.LevelCommand;
+import com.puzzlegalaxy.slider.gui.DebugOutputStream;
+import com.puzzlegalaxy.slider.gui.MainFrame;
+import com.puzzlegalaxy.slider.gui.events.DebugKeyListener;
 import com.puzzlegalaxy.slider.levels.Level;
 import com.puzzlegalaxy.slider.levels.LevelManager;
 import com.puzzlegalaxy.slider.utils.ResourceUtil;
@@ -26,21 +31,23 @@ public class Main {
 
 	public static boolean debug = false;
 	public static boolean debugLoop = false;
-	public static LevelManager lm;
-	private static Scanner s = new Scanner(System.in);
-	private static Level l;
+	
+	private static LevelManager lm;
 
+	public static MainFrame f;
+	public static JTextArea debugText;
+	
 	public static void main(String[] args) {
-
+		
 		ResourceUtil.addCommandResource("internal");
 		ResourceUtil.addLevelResource("10703474-8e8b-48f0-b236-a0441b8495eb");
 		ResourceUtil.addLevelResource("321b8b1f-78b1-461f-9d8d-f9a01bab180a");
 		ResourceUtil.addLevelResource("3b6669b2-5c31-4440-b2ad-043e5cf2afd8");
 		ResourceUtil.addLevelResource("82fce33b-153a-4470-a23b-2571a001d4cd");
 		ResourceUtil.addLevelResource("f2052305-3a17-454e-a425-0885c29f44ad");
-
-		transfer("src/commands/", ".xml", "commands", ResourceUtil.getCommandResources());
-		transfer("src/levels/", ".level", "levels", ResourceUtil.getLevelResources());
+		
+		//transfer("src/commands/", ".xml", "commands", ResourceUtil.getCommandResources());
+		//transfer("src/levels/", ".level", "levels", ResourceUtil.getLevelResources());
 
 		String fs = System.getProperty("file.separator");
 		String path = "";
@@ -50,7 +57,7 @@ public class Main {
 			e.printStackTrace();
 		}
 		if (path.equals("")) {
-			Main.debug("Something went wrong");
+			Main.debug(C.LOADING_ERROR);
 			finish();
 		}
 		String dir = path + fs + "commands" + fs;
@@ -59,38 +66,48 @@ public class Main {
 			CommandHandler.loadCommands(dir);
 		} catch (InvalidCommandException e) {
 			e.printStackTrace();
-			Main.debug("Commands couldn't be loaded");
+			Main.debug(C.COMMAND_LOADING_ERROR);
 		}
 		Command exit = CommandHandler.getCommand("exit");
 		if (exit != null) {
 			exit.setCommandExecutor(new ExitCommand());
-			Main.debug("Exit command registered");
 		}
 		Command level = CommandHandler.getCommand("level");
 		if (level != null) {
 			level.setCommandExecutor(new LevelCommand());
-			Main.debug("Level command registered");
+		}
+		if (level != null && exit != null) {
+			Main.debug(C.COMMANDS_REGISTERED);
+		} else {
+			Main.debug(C.COMMANDS_PART_REGISTERED);
 		}
 
 		lm = new LevelManager();
 		lm.loadLevels();
 
-		// 0 = SAVED, 1 = SAVED, 2 = DEFAULT, 3 = CALCULATED, 4 = RANDOM
+		debugText = new JTextArea();
+		debugText.setRows(50);
+		debugText.setColumns(50);
+		debugText.addKeyListener(new DebugKeyListener());
+		f = new MainFrame();
+		
+		PrintStream print = new PrintStream(new DebugOutputStream(debugText));
+		System.setOut(print);
+		System.setErr(print);
+		
 		start();
-		s.close();
 	}
 
 	public static void start() {
-		l = lm.getLevel(0);
-		loop();
+		LevelManager.setCurrentLevel(lm.getLevel(0));
+		f.updateSlider();
 	}
 	
 	public static boolean another() {
-		System.out.println("Would you like to keep playing? (Y/N)");
-		String text = s.nextLine();
-		if (text.equalsIgnoreCase("Y")) {
-			l.setSolved(false);
-			l.reset(true);
+		int result = JOptionPane.showConfirmDialog(f, C.KEEP_PLAYING_QUESTION, C.KEEP_PLAYING_TITLE, JOptionPane.YES_NO_OPTION);
+		if (result == JOptionPane.YES_OPTION) {
+			LevelManager.getCurrentLevel().setSolved(false);
+			LevelManager.getCurrentLevel().reset(true);
 			return true;
 		}
 		return false;
@@ -102,80 +119,86 @@ public class Main {
 			return false;
 		level.setSolved(false);
 		level.reset(false);
-		l = level;
+		LevelManager.setCurrentLevel(level);
+		f.updateSlider();
 		return true;
 	}
-
-	public static void loop() {
-		if (l.isSolved()) {
-			System.out.println("YAY You solved it");
-			if (another())
-				loop();
-			else
-				finish();
+	
+	public static void testMove(String text) {
+		if (text.startsWith(".")) {
+			boolean executed = CommandHandler.executeCommand(text.substring(1, text.length()));
+			if (!executed)
+				System.out.println(C.COMMAND_FAILED);
+			return;
 		}
-		debug("SETUP: " + l.getStepSetup());
-		System.out.println("Enter your move: ");
-		debug("ROW: " + Arrays.toString(l.getCurrentRow()));
-		if (l.getCurrentRow().length == 0) {
-			System.out.println("YAY You solved it");
-			if (another())
-				loop();
-			else
-				finish();
-		} else {
-			String text = s.nextLine();
-			if (text.startsWith(".")) {
-				boolean executed = CommandHandler.executeCommand(text.substring(1, text.length()));
-				if (!executed)
-					System.out.println("The command didnt return true");
-				loop();
-			}
-			doMove(text, 0);
-		}
-		if (l.isSolved()) {
-			System.out.println("YAY You solved it");
-			if (another())
-				loop();
-			else
-				finish();
-		}
-		loop();
+		doMove(text, 0);
 	}
 
 	public static void doMove(String text, int loop) {
+		f.updateSlider();
 		int move;
 		try {
 			move = Integer.parseInt(text);
 		} catch (NumberFormatException e) {
-			System.out.println("Please enter a number or a command");
+			System.out.println(C.MOVE_UNKNOWN);
 			return;
 		}
 		if (move < 1 || move > 9) {
-			System.out.println("Please enter a number between 1-9");
+			System.out.println(C.MOVE_OUT_OF_BOUNDS);
 			return;
 		}
-		debug("LEVEL: " + l.toString());
-		if (!l.stepValid(move)) {
-			System.out.println("Your move wasnt valid");
-			if (l.outOfSteps()) {
-				l.reset(false);
+		debug("LEVEL: " + LevelManager.getCurrentLevel().toString());
+		if (!LevelManager.getCurrentLevel().stepValid(move)) {
+			System.out.println(C.MOVE_INVALID);
+			if (LevelManager.getCurrentLevel().outOfSteps()) {
+				LevelManager.getCurrentLevel().reset(false);
 				if (loop > 5)
 					finish();
 				doMove(text, loop++);
 			}
-		} else if (!l.stepCorrect(move)) {
-			System.out.println("Your move wasnt correct");
+		} else if (!LevelManager.getCurrentLevel().stepCorrect(move)) {
+			System.out.println(C.MOVE_NOT_CORRECT);
 		} else {
-			System.out.println("Computer Move: " + l.nextStep(move));
-			if (l.isSolved()) {
-				System.out.println("YAY You solved it");
+			System.out.println(C.COMPUTER_MOVE + LevelManager.getCurrentLevel().nextStep(move));
+			if (LevelManager.getCurrentLevel().isSolved()) {
+				System.out.println(C.LEVEL_SOLVED);
 				if (another())
-					loop();
+					f.updateSlider();
 				else
 					finish();
 			}
 		}
+		f.updateSlider();
+	}
+	
+	public static void doMove(int move, int loop) {
+		f.updateSlider();
+		if (move < 1 || move > 9) {
+			System.out.println(C.MOVE_OUT_OF_BOUNDS);
+			return;
+		}
+		debug("LEVEL: " + LevelManager.getCurrentLevel().toString());
+		if (!LevelManager.getCurrentLevel().stepValid(move)) {
+			System.out.println(C.MOVE_INVALID);
+			if (LevelManager.getCurrentLevel().outOfSteps()) {
+				LevelManager.getCurrentLevel().reset(false);
+				if (loop > 5)
+					finish();
+				doMove(move, loop++);
+			}
+		} else if (!LevelManager.getCurrentLevel().stepCorrect(move)) {
+			System.out.println(C.MOVE_NOT_CORRECT);
+		} else {
+			System.out.println(C.COMPUTER_MOVE + LevelManager.getCurrentLevel().nextStep(move));
+			if (LevelManager.getCurrentLevel().isSolved()) {
+				System.out.println(C.LEVEL_SOLVED);
+				if (another())
+					f.updateSlider();
+				else
+					finish();
+			}
+		}
+		f.updateSlider();
 	}
 
 	public static void debug(String msg) {
@@ -195,7 +218,6 @@ public class Main {
 	}
 
 	public static void finish() {
-		s.close();
 		System.exit(0);
 	}
 
@@ -244,6 +266,10 @@ public class Main {
 		URL url = Main.class.getProtectionDomain().getCodeSource().getLocation();
 		String jarPath = URLDecoder.decode(url.getFile(), "UTF-8");
 		return new File(jarPath).getParentFile().getPath();
+	}
+	
+	public static LevelManager getLevelManager() {
+		return lm != null ? lm : (lm = new LevelManager());
 	}
 
 }

@@ -309,7 +309,29 @@ public class Level implements Cloneable {
 		Main.debug("SIZE: " + this.stepsTaken);
 		Main.debug(Arrays.toString(row));
 		for (int i = 1; i < transfer.length; i++) {
-			Main.debug("TRANSFER: " + transfer[i]);
+			Main.debugLoop("TRANSFER: " + transfer[i]);
+			row[i - 1] = Integer.parseInt((String) transfer[i]);
+		}
+		return row;
+	}
+	
+	public int[] getSolvingRow() {
+		if (this.getLevelType() != LevelType.SAVED)
+			return this.getCurrentRow();
+		int steps = this.stepsTaken + 1;
+		Object[] transfer = this.savedInfo[this.savedInfo.length - 1];
+		if (this.savedInfo.length < steps) {
+			this.solved = true;
+			return null;
+		} else if (this.savedInfo.length > steps) {
+			transfer = this.savedInfo[steps];
+		}
+		Main.debug(ArrayUtils.objArrToString(this.savedInfo));
+		int[] row = new int[transfer.length - 1];
+		Main.debug("SIZE: " + this.stepsTaken);
+		Main.debug(Arrays.toString(row));
+		for (int i = 1; i < transfer.length; i++) {
+			Main.debugLoop("TRANSFER: " + transfer[i]);
 			row[i - 1] = Integer.parseInt((String) transfer[i]);
 		}
 		return row;
@@ -475,8 +497,10 @@ public class Level implements Cloneable {
 	public boolean stepValid(int step) {
 		if (this.steps < this.stepsTaken) {
 			Main.debug("SMALLER");
-			if (this.levelType != LevelType.SAVED)
+			if (this.levelType != LevelType.SAVED) {
+				Main.debug("FALSE 1");
 				return false;
+			}
 		}
 		if (this.levelType == LevelType.RANDOM) {
 			if (this.gSequence.length <= this.stepsTaken) {
@@ -484,6 +508,7 @@ public class Level implements Cloneable {
 				try {
 					this.addToGSeq();
 				} catch (InvalidLevelException e) {
+					Main.debug("FALSE 2");
 					return false;
 				}
 			}
@@ -497,6 +522,7 @@ public class Level implements Cloneable {
 				if (i == 11) {
 					if (count == step) {
 						this.reset(false);
+						Main.debug("FALSE 3");
 						return false;
 					}
 					count++;
@@ -511,14 +537,22 @@ public class Level implements Cloneable {
 			}
 		} else if (this.levelType == LevelType.SAVED) {
 			Main.debug("SAVED");
-			if (this.savedInfo.length < this.stepsTaken + 1)
+			if (this.savedInfo.length < this.stepsTaken + 1) {
+				Main.debug("FALSE 4");
 				return false;
-			Main.debug("PRINT: " + Arrays.toString(this.savedInfo[this.stepsTaken + 1]));
-			int val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
+			}
+			Main.debug("PRINT: " + Arrays.toString(this.getSolvingRow()));
+			int val;
+			if (this.savedInfo.length <= this.stepsTaken + 1) {
+				val = Integer.parseInt((String) this.savedInfo[this.savedInfo.length - 1][step + 1]);
+			} else {
+				val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
+			}
 			Main.debug("NUM: " + val);
 			switch (val) {
 			case 11:
 				this.reset(false);
+				Main.debug("FALSE 5");
 				return false;
 			default:
 				return true;
@@ -526,6 +560,7 @@ public class Level implements Cloneable {
 		} else {
 			return true;
 		}
+		Main.debug("FALSE 6");
 		return false;
 	}
 
@@ -537,6 +572,7 @@ public class Level implements Cloneable {
 	 * 				FALSE: The step is incorrect there for indicating the level cannot proceed
 	 */
 	public boolean stepCorrect(int step) {
+		Main.debug("CALL");
 		if (!this.stepValid(step))
 			return false;
 		if (this.levelType == LevelType.RANDOM) {
@@ -562,9 +598,16 @@ public class Level implements Cloneable {
 			}
 			return false;
 		} else if (this.levelType == LevelType.SAVED) {
-			if (this.savedInfo.length <= this.stepsTaken + 1)
+			Main.debug("SAVED");
+			if (this.savedInfo.length < this.stepsTaken + 1)
 				return false;
-			int val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
+			int val;
+			if (this.savedInfo.length <= this.stepsTaken + 1) {
+				val = Integer.parseInt((String) this.savedInfo[this.savedInfo.length - 1][step + 1]);
+			} else {
+				val = Integer.parseInt((String) this.savedInfo[this.stepsTaken + 1][step + 1]);
+			}
+			Main.debug("VAL: " + val);
 			switch (val) {
 			case 0:
 			case 11:

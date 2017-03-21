@@ -17,7 +17,7 @@ public class LevelCommand implements CommandExecutor {
 				System.out.println("Please enter only a level NUMBER");
 				return false;
 			}
-			if (!Main.lm.levelExists(num)) {
+			if (!Main.getLevelManager().levelExists(num)) {
 				System.out.println("A level with that number doesnt exist");
 				return false;
 			} else {
